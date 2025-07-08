@@ -85,19 +85,43 @@ def brute_force_zip(zip_path, max_length=4, charset=string.digits):
     except Exception as e:
         raise Exception(f"Error processing ZIP file: {e}")
 
-def brute_force_rar_with_7z(rar_path, max_length=4, charset=string.digits):
-    """Brute force RAR using 7z command line tool"""
+def brute_force_rar_with_tools(rar_path, max_length=4, charset=string.digits):
+    """Brute force RAR using available command line tools"""
     total_attempts = 0
     
-    # Find 7z executable
-    sevenz_cmd = shutil.which('7z') or shutil.which('7za')
-    if not sevenz_cmd:
-        raise Exception("7z tool not found")
+    # Find available tools in order of preference
+    tools = check_rar_tools()
+    
+    # Try 7z first
+    if tools['7z']:
+        cmd_tool = shutil.which('7z') or shutil.which('7za')
+        test_cmd = [cmd_tool, 't', rar_path]
+        password_cmd = lambda pwd: [cmd_tool, 't', rar_path, f'-p{pwd}']
+        logger.info("Using 7z tool")
+    # Try WinRAR
+    elif tools['winrar']:
+        winrar_paths = [
+            r"C:\Program Files\WinRAR\WinRAR.exe",
+            r"C:\Program Files (x86)\WinRAR\WinRAR.exe"
+        ]
+        cmd_tool = next((path for path in winrar_paths if os.path.exists(path)), None)
+        if not cmd_tool:
+            raise Exception("WinRAR executable not found")
+        test_cmd = [cmd_tool, 't', rar_path]
+        password_cmd = lambda pwd: [cmd_tool, 't', f'-p{pwd}', rar_path]
+        logger.info("Using WinRAR tool")
+    # Try unrar
+    elif tools['unrar']:
+        cmd_tool = shutil.which('unrar')
+        test_cmd = [cmd_tool, 't', rar_path]
+        password_cmd = lambda pwd: [cmd_tool, 't', f'-p{pwd}', rar_path]
+        logger.info("Using unrar tool")
+    else:
+        raise Exception("No RAR tool found")
     
     # Test if file needs password
     try:
-        result = subprocess.run([sevenz_cmd, 't', rar_path], 
-                              capture_output=True, text=True, timeout=10)
+        result = subprocess.run(test_cmd, capture_output=True, text=True, timeout=10)
         if result.returncode == 0:
             return "NO_PASSWORD_NEEDED"
     except subprocess.TimeoutExpired:
@@ -115,8 +139,8 @@ def brute_force_rar_with_7z(rar_path, max_length=4, charset=string.digits):
                 logger.info(f"Tried {total_attempts} passwords...")
             
             try:
-                # Test password with 7z
-                result = subprocess.run([sevenz_cmd, 't', rar_path, f'-p{password}'], 
+                # Test password with selected tool
+                result = subprocess.run(password_cmd(password), 
                                       capture_output=True, text=True, timeout=10)
                 if result.returncode == 0:
                     logger.info(f"Password found: {password} (after {total_attempts} attempts)")
@@ -136,14 +160,10 @@ def brute_force_archive(file_path, max_length=4, charset=string.digits):
         return brute_force_zip(file_path, max_length, charset)
     elif file_ext == '.rar':
         tools = check_rar_tools()
-        if tools['7z']:
-            return brute_force_rar_with_7z(file_path, max_length, charset)
+        if any(tools.values()):
+            return brute_force_rar_with_tools(file_path, max_length, charset)
         else:
-            available_tools = [tool for tool, available in tools.items() if available]
-            if available_tools:
-                raise Exception(f"RAR support requires 7z tool. Available: {', '.join(available_tools)}")
-            else:
-                raise Exception("RAR support requires 7z, unrar, or WinRAR. Please install one of these tools.")
+            raise Exception("RAR support requires 7z, unrar, or WinRAR. Please install one of these tools.")
     else:
         raise Exception(f"Unsupported file format: {file_ext}")
 
