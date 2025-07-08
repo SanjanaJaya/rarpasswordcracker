@@ -1,88 +1,140 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Local RAR Brute-Forcer</title>
+    <title>Smart Archive Password Cracker</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
         #result { margin-top: 20px; font-weight: bold; }
         .error { color: red; }
         .success { color: green; }
         .info { color: blue; }
+        .warning { color: orange; }
+        .status-box { margin: 10px 0; padding: 15px; background: #f5f5f5; border-radius: 5px; }
+        .tool-status { margin: 5px 0; }
+        .available { color: green; }
+        .unavailable { color: red; }
+        button { padding: 10px 20px; margin: 10px 0; cursor: pointer; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
-    <h1>RAR Password Cracker (Local)</h1>
-    <p>Upload a RAR file to brute-force its password (demo: 4-digit numbers).</p>
+    <h1>Smart Archive Password Cracker</h1>
+    <p>Upload a password-protected archive to brute-force its password.</p>
     
-    <input type="file" id="rarFile" accept=".rar">
-    <button onclick="crackRAR()">Crack Password</button>
+    <div class="status-box">
+        <h3>System Status</h3>
+        <div id="toolStatus">Checking available tools...</div>
+    </div>
+    
+    <div class="status-box">
+        <strong>Settings:</strong> 4-digit numbers (0-9)<br>
+        <strong>Max attempts:</strong> 10,000 combinations<br>
+        <strong>Formats:</strong> ZIP (always), RAR (if tools available)
+    </div>
+    
+    <input type="file" id="archiveFile" accept=".zip,.rar">
+    <button id="crackBtn" onclick="crackPassword()">Crack Password</button>
     <div id="result"></div>
 
     <script>
-        async function crackRAR() {
-            const fileInput = document.getElementById('rarFile');
-            const resultDiv = document.getElementById('result');
-            
-            if (!fileInput.files.length) {
-                resultDiv.innerHTML = "<span class='error'>Please select a RAR file.</span>";
-                return;
+        let serverStatus = null;
+
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('http://127.0.0.1:5001/status');
+                const data = await response.json();
+                serverStatus = data;
+                updateToolStatus(data);
+                return true;
+            } catch (error) {
+                document.getElementById('toolStatus').innerHTML = 
+                    '<span class="error">❌ Server not running. Please start the Flask application.</span>';
+                return false;
             }
+        }
 
-            resultDiv.innerHTML = "<span class='info'>Brute-forcing... (this may take a while)</span>";
+        function updateToolStatus(data) {
+            const statusDiv = document.getElementById('toolStatus');
+            let html = '<div class="tool-status"><strong>Server:</strong> <span class="available">✓ Running</span></div>';
             
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-
-            // Try multiple server URLs
-            const serverUrls = [
-                'http://127.0.0.1:5001/crack',
-                'http://localhost:5001/crack'
-            ];
-
-            for (const url of serverUrls) {
-                try {
-                    console.log(`Trying to connect to: ${url}`);
+            if (data.available_tools) {
+                html += '<div class="tool-status"><strong>ZIP support:</strong> <span class="available">✓ Always available</span></div>';
+                
+                const hasRarTools = Object.values(data.available_tools).some(available => available);
+                if (hasRarTools) {
+                    html += '<div class="tool-status"><strong>RAR support:</strong> <span class="available">✓ Available</span></div>';
                     
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    console.log(`Response status: ${response.status}`);
-                    
-                    const data = await response.json();
-                    console.log('Response data:', data);
-
-                    if (data.password) {
-                        resultDiv.innerHTML = `<span class='success'>Success! Password: <strong>${data.password}</strong></span>`;
-                        return;
-                    } else if (data.message) {
-                        resultDiv.innerHTML = `<span class='info'>${data.message}</span>`;
-                        return;
-                    } else {
-                        resultDiv.innerHTML = `<span class='error'>Password not found in search space (digits 0-9, max 4 chars).</span>`;
-                        return;
+                    // Show specific tools
+                    for (const [tool, available] of Object.entries(data.available_tools)) {
+                        if (available) {
+                            html += `<div class="tool-status">  • ${tool}: <span class="available">✓</span></div>`;
+                        }
                     }
-                    
-                } catch (error) {
-                    console.error(`Failed to connect to ${url}:`, error);
-                    continue; // Try next URL
+                } else {
+                    html += '<div class="tool-status"><strong>RAR support:</strong> <span class="unavailable">✗ Not available</span></div>';
+                    html += '<div class="tool-status"><small>Install 7z, unrar, or WinRAR for RAR support</small></div>';
                 }
             }
             
-            // If all URLs failed
-            resultDiv.innerHTML = `<span class='error'>Cannot connect to server. Make sure Flask server is running on port 5000.</span>`;
+            statusDiv.innerHTML = html;
         }
 
-        // Test server connection on page load
-        window.onload = async function() {
-            try {
-                const response = await fetch('http://127.0.0.1:5000/status');
-                const data = await response.json();
-                console.log('Server status:', data);
-            } catch (error) {
-                console.error('Server connection test failed:', error);
+        async function crackPassword() {
+            const fileInput = document.getElementById('archiveFile');
+            const resultDiv = document.getElementById('result');
+            const crackBtn = document.getElementById('crackBtn');
+            
+            if (!fileInput.files.length) {
+                resultDiv.innerHTML = "<span class='error'>❌ Please select an archive file.</span>";
+                return;
             }
+
+            const file = fileInput.files[0];
+            const fileName = file.name.toLowerCase();
+            
+            // Check file type and tool availability
+            if (fileName.endsWith('.rar')) {
+                if (!serverStatus || !Object.values(serverStatus.available_tools || {}).some(available => available)) {
+                    resultDiv.innerHTML = "<span class='error'>❌ RAR files require external tools. Please install 7z, unrar, or WinRAR.</span>";
+                    return;
+                }
+            } else if (!fileName.endsWith('.zip')) {
+                resultDiv.innerHTML = "<span class='error'>❌ Please select a ZIP or RAR file.</span>";
+                return;
+            }
+
+            crackBtn.disabled = true;
+            resultDiv.innerHTML = "<span class='info'>🔍 Cracking password... (this may take a while)</span>";
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('http://127.0.0.1:5001/crack', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+
+                if (data.password) {
+                    resultDiv.innerHTML = `<span class='success'>✅ Password found: <strong>${data.password}</strong></span>`;
+                } else if (data.message) {
+                    resultDiv.innerHTML = `<span class='info'>ℹ️ ${data.message}</span>`;
+                } else if (data.error) {
+                    resultDiv.innerHTML = `<span class='error'>❌ ${data.error}</span>`;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<span class='error'>❌ Network error: ${error.message}</span>`;
+            } finally {
+                crackBtn.disabled = false;
+            }
+        }
+
+        // Check server status on page load
+        window.onload = async function() {
+            await checkServerStatus();
         }
     </script>
 </body>
