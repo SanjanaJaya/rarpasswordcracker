@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Local RAR Brute-Forcer</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        #result { margin-top: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>RAR Password Cracker (Local)</h1>
+    <p>Upload a RAR file to brute-force its password (demo: 4-digit numbers).</p>
+    
+    <input type="file" id="rarFile" accept=".rar">
+    <button onclick="crackRAR()">Crack Password</button>
+    <div id="result"></div>
+
+    <script>
+        async function crackRAR() {
+            const fileInput = document.getElementById('rarFile');
+            const resultDiv = document.getElementById('result');
+            
+            if (!fileInput.files.length) {
+                resultDiv.innerHTML = "<span style='color: red;'>Please select a RAR file.</span>";
+                return;
+            }
+
+            resultDiv.innerHTML = "Brute-forcing... (this may take a while)";
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('http://localhost:5000/crack', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.password) {
+                    resultDiv.innerHTML = `<span style='color: green;'>Success! Password: <strong>${data.password}</strong></span>`;
+                } else {
+                    resultDiv.innerHTML = "<span style='color: red;'>Password not found.</span>";
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span style='color: red;'>Error: ${error.message}. Is the Python server running?</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
