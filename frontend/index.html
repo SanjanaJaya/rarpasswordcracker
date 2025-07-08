@@ -5,6 +5,9 @@
     <style>
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
         #result { margin-top: 20px; font-weight: bold; }
+        .error { color: red; }
+        .success { color: green; }
+        .info { color: blue; }
     </style>
 </head>
 <body>
@@ -21,29 +24,64 @@
             const resultDiv = document.getElementById('result');
             
             if (!fileInput.files.length) {
-                resultDiv.innerHTML = "<span style='color: red;'>Please select a RAR file.</span>";
+                resultDiv.innerHTML = "<span class='error'>Please select a RAR file.</span>";
                 return;
             }
 
-            resultDiv.innerHTML = "Brute-forcing... (this may take a while)";
+            resultDiv.innerHTML = "<span class='info'>Brute-forcing... (this may take a while)</span>";
             
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
 
-            try {
-                const response = await fetch('http://localhost:5000/crack', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
+            // Try multiple server URLs
+            const serverUrls = [
+                'http://127.0.0.1:5001/crack',
+                'http://localhost:5001/crack'
+            ];
 
-                if (data.password) {
-                    resultDiv.innerHTML = `<span style='color: green;'>Success! Password: <strong>${data.password}</strong></span>`;
-                } else {
-                    resultDiv.innerHTML = "<span style='color: red;'>Password not found.</span>";
+            for (const url of serverUrls) {
+                try {
+                    console.log(`Trying to connect to: ${url}`);
+                    
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    console.log(`Response status: ${response.status}`);
+                    
+                    const data = await response.json();
+                    console.log('Response data:', data);
+
+                    if (data.password) {
+                        resultDiv.innerHTML = `<span class='success'>Success! Password: <strong>${data.password}</strong></span>`;
+                        return;
+                    } else if (data.message) {
+                        resultDiv.innerHTML = `<span class='info'>${data.message}</span>`;
+                        return;
+                    } else {
+                        resultDiv.innerHTML = `<span class='error'>Password not found in search space (digits 0-9, max 4 chars).</span>`;
+                        return;
+                    }
+                    
+                } catch (error) {
+                    console.error(`Failed to connect to ${url}:`, error);
+                    continue; // Try next URL
                 }
+            }
+            
+            // If all URLs failed
+            resultDiv.innerHTML = `<span class='error'>Cannot connect to server. Make sure Flask server is running on port 5000.</span>`;
+        }
+
+        // Test server connection on page load
+        window.onload = async function() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/status');
+                const data = await response.json();
+                console.log('Server status:', data);
             } catch (error) {
-                resultDiv.innerHTML = `<span style='color: red;'>Error: ${error.message}. Is the Python server running?</span>`;
+                console.error('Server connection test failed:', error);
             }
         }
     </script>
