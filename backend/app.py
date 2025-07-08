@@ -98,7 +98,13 @@ def brute_force_rar_with_tools(rar_path, max_length=4, charset=string.digits):
         test_cmd = [cmd_tool, 't', rar_path]
         password_cmd = lambda pwd: [cmd_tool, 't', rar_path, f'-p{pwd}']
         logger.info("Using 7z tool")
-    # Try WinRAR
+    # Try unrar
+    elif tools['unrar']:
+        cmd_tool = shutil.which('unrar')
+        test_cmd = [cmd_tool, 't', rar_path]
+        password_cmd = lambda pwd: [cmd_tool, 't', f'-p{pwd}', rar_path]
+        logger.info("Using unrar tool")
+    # Try WinRAR - FIXED: Use command line arguments to prevent GUI and messages
     elif tools['winrar']:
         winrar_paths = [
             r"C:\Program Files\WinRAR\WinRAR.exe",
@@ -107,21 +113,17 @@ def brute_force_rar_with_tools(rar_path, max_length=4, charset=string.digits):
         cmd_tool = next((path for path in winrar_paths if os.path.exists(path)), None)
         if not cmd_tool:
             raise Exception("WinRAR executable not found")
-        test_cmd = [cmd_tool, 't', rar_path]
-        password_cmd = lambda pwd: [cmd_tool, 't', f'-p{pwd}', rar_path]
+        # Use -ibck (background), -inul (no messages), -y (yes to all)
+        test_cmd = [cmd_tool, 't', '-ibck', '-inul', '-y', rar_path]
+        password_cmd = lambda pwd: [cmd_tool, 't', '-ibck', '-inul', '-y', f'-p{pwd}', rar_path]
         logger.info("Using WinRAR tool")
-    # Try unrar
-    elif tools['unrar']:
-        cmd_tool = shutil.which('unrar')
-        test_cmd = [cmd_tool, 't', rar_path]
-        password_cmd = lambda pwd: [cmd_tool, 't', f'-p{pwd}', rar_path]
-        logger.info("Using unrar tool")
     else:
         raise Exception("No RAR tool found")
     
     # Test if file needs password
     try:
-        result = subprocess.run(test_cmd, capture_output=True, text=True, timeout=10)
+        result = subprocess.run(test_cmd, capture_output=True, text=True, timeout=10, 
+                              creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
         if result.returncode == 0:
             return "NO_PASSWORD_NEEDED"
     except subprocess.TimeoutExpired:
@@ -139,9 +141,10 @@ def brute_force_rar_with_tools(rar_path, max_length=4, charset=string.digits):
                 logger.info(f"Tried {total_attempts} passwords...")
             
             try:
-                # Test password with selected tool
+                # Test password with selected tool - FIXED: Proper output suppression
                 result = subprocess.run(password_cmd(password), 
-                                      capture_output=True, text=True, timeout=10)
+                                      capture_output=True, text=True, timeout=10,
+                                      creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
                 if result.returncode == 0:
                     logger.info(f"Password found: {password} (after {total_attempts} attempts)")
                     return password
