@@ -82,7 +82,7 @@
             margin: 5px 0;
         }
         
-        /* Console Section */
+        /* Console Section - Updated for better visibility */
         .console-section {
             margin: 20px 0;
             display: none;
@@ -103,13 +103,37 @@
             border: 1px solid #333;
         }
         .console-line {
-            margin: 3px 0;
-            padding: 2px 0;
+            margin: 2px 0;
+            padding: 4px 8px;
+            border-radius: 3px;
+            background-color: rgba(0, 0, 0, 0.2);
         }
-        .console-line.info { color: #66d9ef; }
-        .console-line.success { color: #a6e22e; }
-        .console-line.error { color: #f92672; }
-        .console-line.warning { color: #fd971f; }
+        .console-line.info { 
+            color: #4fc3f7; /* Brighter blue */
+            font-weight: bold;
+        }
+        .console-line.success { 
+            color: #69f0ae; /* Brighter green */
+            font-weight: bold;
+        }
+        .console-line.error { 
+            color: #ff5252; /* Brighter red */
+            font-weight: bold;
+        }
+        .console-line.warning { 
+            color: #ffd740; /* Brighter yellow */
+            font-weight: bold;
+        }
+        .console::-webkit-scrollbar {
+            width: 8px;
+        }
+        .console::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        .console::-webkit-scrollbar-thumb {
+            background: #4fc3f7;
+            border-radius: 4px;
+        }
         
         /* Form Elements */
         .file-input-container {
