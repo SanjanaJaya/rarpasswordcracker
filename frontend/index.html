@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Smart Archive Password Cracker</title>
+    <title>Advanced Archive Password Cracker</title>
     <style>
         body { 
             font-family: Arial, sans-serif; 
-            max-width: 700px; 
+            max-width: 800px; 
             margin: 0 auto; 
             padding: 20px; 
             background-color: #f5f5f5;
@@ -31,6 +31,38 @@
         .tool-status { margin: 5px 0; }
         .available { color: #28a745; font-weight: bold; }
         .unavailable { color: #dc3545; font-weight: bold; }
+        
+        /* Settings Section */
+        .settings-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #6f42c1;
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .setting-group {
+            margin-bottom: 15px;
+        }
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #495057;
+        }
+        .setting-group select, 
+        .setting-group input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 16px;
+        }
         
         /* Progress Section */
         .progress-section {
@@ -82,7 +114,7 @@
             margin: 5px 0;
         }
         
-        /* Console Section - Updated for better visibility */
+        /* Console Section */
         .console-section {
             margin: 20px 0;
             display: none;
@@ -109,19 +141,19 @@
             background-color: rgba(0, 0, 0, 0.2);
         }
         .console-line.info { 
-            color: #4fc3f7; /* Brighter blue */
+            color: #4fc3f7;
             font-weight: bold;
         }
         .console-line.success { 
-            color: #69f0ae; /* Brighter green */
+            color: #69f0ae;
             font-weight: bold;
         }
         .console-line.error { 
-            color: #ff5252; /* Brighter red */
+            color: #ff5252;
             font-weight: bold;
         }
         .console-line.warning { 
-            color: #ffd740; /* Brighter yellow */
+            color: #ffd740;
             font-weight: bold;
         }
         .console::-webkit-scrollbar {
@@ -210,7 +242,7 @@
             border: 1px solid #ffeaa7;
         }
         
-        /* Stats - Simplified */
+        /* Stats */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -235,11 +267,16 @@
             text-transform: uppercase;
             margin-top: 5px;
         }
+        .stat-small {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔐 Smart Archive Password Cracker</h1>
+        <h1>🔐 Advanced Archive Password Cracker</h1>
         <p style="text-align: center; color: #6c757d;">Upload a password-protected archive to brute-force its password.</p>
         
         <div class="status-box">
@@ -247,10 +284,25 @@
             <div id="toolStatus">Checking available tools...</div>
         </div>
         
-        <div class="status-box">
-            <strong>⚙️ Settings:</strong> 4-digit numbers (0-9)<br>
-            <strong>🎯 Max attempts:</strong> 10,000 combinations<br>
-            <strong>📁 Formats:</strong> ZIP (always), RAR (if tools available)
+        <div class="settings-section">
+            <h3>⚙️ Cracking Settings</h3>
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <label for="maxLength">Max Password Length:</label>
+                    <input type="number" id="maxLength" min="1" max="8" value="6">
+                </div>
+                <div class="setting-group">
+                    <label for="charset">Character Set:</label>
+                    <select id="charset">
+                        <option value="alphanumeric">Alphanumeric (0-9, a-z, A-Z)</option>
+                        <option value="digits">Digits only (0-9)</option>
+                        <option value="lowercase">Lowercase letters (a-z)</option>
+                        <option value="uppercase">Uppercase letters (A-Z)</option>
+                        <option value="letters">Letters only (a-z, A-Z)</option>
+                    </select>
+                </div>
+            </div>
+            <div id="combinationsInfo" class="stat-small">Estimated combinations: calculating...</div>
         </div>
         
         <div class="file-input-container" id="fileDropZone">
@@ -280,6 +332,14 @@
                     <div class="stat-number" id="currentLength">0</div>
                     <div class="stat-label">Testing <span id="lengthType">digits</span></div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="speed">0</div>
+                    <div class="stat-label">Attempts/sec</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="remainingTime">--</div>
+                    <div class="stat-label">Estimated Remaining</div>
+                </div>
             </div>
         </div>
         
@@ -296,9 +356,9 @@
         let serverStatus = null;
         let crackingInProgress = false;
         let startTime = null;
-        let totalAttempts = 0;
         let currentAttempts = 0;
-        let maxAttempts = 10000; // 10^4 for 4-digit numbers
+        let maxAttempts = 0;
+        let lastLoggedLength = 0;
         
         // File drag and drop
         const fileDropZone = document.getElementById('fileDropZone');
@@ -335,6 +395,45 @@
             const dt = e.dataTransfer;
             const files = dt.files;
             fileInput.files = files;
+            updateCombinationsInfo();
+        }
+
+        // Update combinations info when settings change
+        document.getElementById('maxLength').addEventListener('input', updateCombinationsInfo);
+        document.getElementById('charset').addEventListener('change', updateCombinationsInfo);
+
+        function updateCombinationsInfo() {
+            const maxLength = parseInt(document.getElementById('maxLength').value);
+            const charset = document.getElementById('charset').value;
+            
+            // Calculate charset size
+            let charsetSize;
+            switch(charset) {
+                case 'digits': charsetSize = 10; break;
+                case 'lowercase': charsetSize = 26; break;
+                case 'uppercase': charsetSize = 26; break;
+                case 'letters': charsetSize = 52; break;
+                default: charsetSize = 62; // alphanumeric
+            }
+            
+            // Calculate total combinations
+            let total = 0;
+            for (let length = 1; length <= maxLength; length++) {
+                total += Math.pow(charsetSize, length);
+            }
+            
+            // Format number
+            let formattedTotal;
+            if (total > 1000000) {
+                formattedTotal = (total / 1000000).toFixed(1) + ' million';
+            } else if (total > 1000) {
+                formattedTotal = (total / 1000).toFixed(1) + ' thousand';
+            } else {
+                formattedTotal = total;
+            }
+            
+            document.getElementById('combinationsInfo').textContent = 
+                `Estimated combinations: ${formattedTotal} (${charsetSize} chars, length 1-${maxLength})`;
         }
 
         async function checkServerStatus() {
@@ -386,21 +485,40 @@
             console.scrollTop = console.scrollHeight;
         }
 
-        function updateProgress(attempts, currentLength, found = false) {
+        function updateProgress(attempts, currentLength, found = false, speed = 0, remaining = null) {
             const progressBar = document.getElementById('progressBar');
             const progressText = document.getElementById('progressText');
             const attemptsCount = document.getElementById('attemptsCount');
             const currentLengthElement = document.getElementById('currentLength');
             const lengthType = document.getElementById('lengthType');
+            const speedElement = document.getElementById('speed');
+            const remainingTimeElement = document.getElementById('remainingTime');
             
             currentAttempts = attempts;
-            const percentage = Math.min((attempts / maxAttempts) * 100, 100);
+            const percentage = maxAttempts > 0 ? Math.min((attempts / maxAttempts) * 100, 100) : 0;
             
             progressBar.style.width = percentage + '%';
             progressText.textContent = found ? 'Password Found!' : `Testing passwords... ${attempts.toLocaleString()}/${maxAttempts.toLocaleString()} (${percentage.toFixed(1)}%)`;
             
             attemptsCount.textContent = attempts.toLocaleString();
             currentLengthElement.textContent = currentLength;
+            speedElement.textContent = speed.toLocaleString();
+            
+            // Update remaining time
+            if (remaining !== null && remaining > 0) {
+                const hours = Math.floor(remaining / 3600);
+                const minutes = Math.floor((remaining % 3600) / 60);
+                const seconds = Math.floor(remaining % 60);
+                
+                let timeStr = '';
+                if (hours > 0) timeStr += `${hours}h `;
+                if (minutes > 0 || hours > 0) timeStr += `${minutes}m `;
+                timeStr += `${seconds}s`;
+                
+                remainingTimeElement.textContent = timeStr;
+            } else {
+                remainingTimeElement.textContent = '--';
+            }
             
             // Update the digit type description
             if (currentLength === 1) {
@@ -423,7 +541,6 @@
         function resetProgress() {
             updateProgress(0, 0);
             document.getElementById('console').innerHTML = '';
-            totalAttempts = 0;
             currentAttempts = 0;
             startTime = null;
         }
@@ -446,17 +563,25 @@
                     return;
                 }
                 
-                // Update progress with real data
-                updateProgress(data.attempts, data.current_length, data.found);
-                
                 // Update max attempts if we have total combinations
                 if (data.total_combinations) {
                     maxAttempts = data.total_combinations;
                 }
                 
+                // Update progress with real data
+                updateProgress(
+                    data.attempts, 
+                    data.current_length, 
+                    data.found,
+                    data.speed || 0,
+                    data.estimated_remaining
+                );
+                
                 // Add console logs based on status
                 if (data.status === 'starting') {
                     addConsoleLog('Initializing password cracker...', 'info');
+                    addConsoleLog(`Max password length: ${data.max_length}`, 'info');
+                    addConsoleLog(`Character set: ${data.charset}`, 'info');
                 } else if (data.status === 'cracking') {
                     // Log every 200 attempts to avoid spam
                     if (data.attempts % 200 === 0 && data.attempts > 0) {
@@ -477,14 +602,26 @@
                 } else if (data.status === 'completed') {
                     if (data.found && data.password) {
                         addConsoleLog(`PASSWORD FOUND: ${data.password}`, 'success');
+                        document.getElementById('result').innerHTML = 
+                            `<span class='success'>✅ Password found: <strong>${data.password}</strong></span>`;
                     } else {
                         addConsoleLog('Password not found within search space', 'warning');
+                        document.getElementById('result').innerHTML = 
+                            `<span class='warning'>⚠️ Password not found within the specified search space</span>`;
                     }
                     crackingInProgress = false;
+                    document.getElementById('crackBtn').disabled = false;
+                    document.getElementById('crackBtn').textContent = '🚀 Start Cracking';
+                    document.getElementById('stopBtn').style.display = 'none';
                     eventSource.close();
                 } else if (data.status === 'error') {
                     addConsoleLog(`Error: ${data.error}`, 'error');
+                    document.getElementById('result').innerHTML = 
+                        `<span class='error'>❌ ${data.error}</span>`;
                     crackingInProgress = false;
+                    document.getElementById('crackBtn').disabled = false;
+                    document.getElementById('crackBtn').textContent = '🚀 Start Cracking';
+                    document.getElementById('stopBtn').style.display = 'none';
                     eventSource.close();
                 }
             };
@@ -494,13 +631,13 @@
                 eventSource.close();
             };
         }
-        
-        let lastLoggedLength = 0;
 
         async function crackPassword() {
             const fileInput = document.getElementById('archiveFile');
             const resultDiv = document.getElementById('result');
             const crackBtn = document.getElementById('crackBtn');
+            const maxLength = parseInt(document.getElementById('maxLength').value);
+            const charset = document.getElementById('charset').value;
             
             if (!fileInput.files.length) {
                 resultDiv.innerHTML = "<span class='error'>❌ Please select an archive file.</span>";
@@ -521,6 +658,12 @@
                 return;
             }
 
+            // Validate max length
+            if (maxLength < 1 || maxLength > 8) {
+                resultDiv.innerHTML = "<span class='error'>❌ Max length must be between 1 and 8</span>";
+                return;
+            }
+
             // Start cracking process
             crackingInProgress = true;
             startTime = Date.now();
@@ -536,7 +679,17 @@
             
             addConsoleLog(`Starting password cracking for: ${file.name}`, 'info');
             addConsoleLog(`File type: ${fileName.endsWith('.zip') ? 'ZIP' : 'RAR'}`, 'info');
-            addConsoleLog('Testing 4-digit number combinations (0000-9999)', 'info');
+            
+            // Describe charset
+            let charsetDesc;
+            switch(charset) {
+                case 'digits': charsetDesc = 'digits (0-9)'; break;
+                case 'lowercase': charsetDesc = 'lowercase letters (a-z)'; break;
+                case 'uppercase': charsetDesc = 'uppercase letters (A-Z)'; break;
+                case 'letters': charsetDesc = 'letters (a-z, A-Z)'; break;
+                default: charsetDesc = 'alphanumeric (0-9, a-z, A-Z)';
+            }
+            addConsoleLog(`Testing ${maxLength}-character passwords with: ${charsetDesc}`, 'info');
             
             resultDiv.innerHTML = "";
             
@@ -545,6 +698,8 @@
             
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('max_length', maxLength);
+            formData.append('charset', charset);
 
             try {
                 const response = await fetch('http://127.0.0.1:5001/crack', {
@@ -595,6 +750,7 @@
         // Check server status on page load
         window.onload = async function() {
             await checkServerStatus();
+            updateCombinationsInfo();
         }
     </script>
 </body>
