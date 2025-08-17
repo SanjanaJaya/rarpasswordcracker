@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced Archive Password Cracker</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status-box { 
+            margin: 15px 0; 
+            padding: 15px; 
+            background: #f8f9fa; 
+            border-radius: 8px; 
+            border-left: 4px solid #007bff;
+        }
+        .tool-status { margin: 5px 0; }
+        .available { color: #28a745; font-weight: bold; }
+        .unavailable { color: #dc3545; font-weight: bold; }
+        
+        /* Settings Section */
+        .settings-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #6f42c1;
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .setting-group {
+            margin-bottom: 15px;
+        }
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #495057;
+        }
+        .setting-group select, 
+        .setting-group input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        /* Progress Section */
+        .progress-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #17a2b8;
+            display: none;
+        }
+        .progress-section.active {
+            display: block;
+        }
+        .progress-bar-container {
+            width: 100%;
+            height: 25px;
+            background-color: #e9ecef;
+            border-radius: 13px;
+            overflow: hidden;
+            margin: 10px 0;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 13px;
+            position: relative;
+        }
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .progress-text {
+            text-align: center;
+            font-weight: bold;
+            color: #495057;
+            margin: 5px 0;
+        }
+        
+        /* Console Section */
+        .console-section {
+            margin: 20px 0;
+            display: none;
+        }
+        .console-section.active {
+            display: block;
+        }
+        .console {
+            background: #1e1e1e;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.4;
+            border: 1px solid #333;
+        }
+        .console-line {
+            margin: 2px 0;
+            padding: 4px 8px;
+            border-radius: 3px;
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+        .console-line.info { 
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+        .console-line.success { 
+            color: #69f0ae;
+            font-weight: bold;
+        }
+        .console-line.error { 
+            color: #ff5252;
+            font-weight: bold;
+        }
+        .console-line.warning { 
+            color: #ffd740;
+            font-weight: bold;
+        }
+        .console::-webkit-scrollbar {
+            width: 8px;
+        }
+        .console::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        .console::-webkit-scrollbar-thumb {
+            background: #4fc3f7;
+            border-radius: 4px;
+        }
+        
+        /* Form Elements */
+        .file-input-container {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+        .file-input-container:hover {
+            border-color: #007bff;
+        }
+        .file-input-container.dragover {
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 400px;
+        }
+        button {
+            padding: 12px 30px;
+            margin: 10px 0;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover:not(:disabled) {
+            background: #0056b3;
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background: #6c757d;
+        }
+        
+        /* Results */
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+            min-height: 20px;
+        }
+        .error { 
+            color: #721c24; 
+            background-color: #f8d7da; 
+            border: 1px solid #f5c6cb;
+        }
+        .success { 
+            color: #155724; 
+            background-color: #d4edda; 
+            border: 1px solid #c3e6cb;
+        }
+        .info { 
+            color: #0c5460; 
+            background-color: #d1ecf1; 
+            border: 1px solid #bee5eb;
+        }
+        .warning { 
+            color: #856404; 
+            background-color: #fff3cd; 
+            border: 1px solid #ffeaa7;
+        }
+        
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #6c757d;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+        .stat-small {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Advanced Archive Password Cracker</h1>
+        <p style="text-align: center; color: #6c757d;">Upload a password-protected archive to brute-force its password.</p>
+        
+        <div class="status-box">
+            <h3>🔧 System Status</h3>
+            <div id="toolStatus">Checking available tools...</div>
+        </div>
+        
+        <div class="settings-section">
+            <h3>⚙️ Cracking Settings</h3>
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <label for="maxLength">Max Password Length:</label>
+                    <input type="number" id="maxLength" min="1" max="8" value="6">
+                </div>
+                <div class="setting-group">
+                    <label for="charset">Character Set:</label>
+                    <select id="charset">
+                        <option value="alphanumeric">Alphanumeric (0-9, a-z, A-Z)</option>
+                        <option value="digits">Digits only (0-9)</option>
+                        <option value="lowercase">Lowercase letters (a-z)</option>
+                        <option value="uppercase">Uppercase letters (A-Z)</option>
+                        <option value="letters">Letters only (a-z, A-Z)</option>
+                    </select>
+                </div>
+            </div>
+            <div id="combinationsInfo" class="stat-small">Estimated combinations: calculating...</div>
+        </div>
+        
+        <div class="file-input-container" id="fileDropZone">
+            <p>📁 Select or drag & drop your archive file</p>
+            <input type="file" id="archiveFile" accept=".zip,.rar">
+        </div>
+        
+        <div style="text-align: center;">
+            <button id="crackBtn" onclick="crackPassword()">🚀 Start Cracking</button>
+            <button id="stopBtn" onclick="stopCracking()" style="background: #dc3545; display: none;">⏹️ Stop</button>
+        </div>
+        
+        <!-- Progress Section -->
+        <div class="progress-section" id="progressSection">
+            <h3>🔍 Cracking Progress</h3>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-text" id="progressText">Initializing...</div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="attemptsCount">0</div>
+                    <div class="stat-label">Total Attempts</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="currentLength">0</div>
+                    <div class="stat-label">Testing <span id="lengthType">digits</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="speed">0</div>
+                    <div class="stat-label">Attempts/sec</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="remainingTime">--</div>
+                    <div class="stat-label">Estimated Remaining</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Console Section -->
+        <div class="console-section" id="consoleSection">
+            <h3>📊 Console Log</h3>
+            <div class="console" id="console"></div>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let serverStatus = null;
+        let crackingInProgress = false;
+        let startTime = null;
+        let currentAttempts = 0;
+        let maxAttempts = 0;
+        let lastLoggedLength = 0;
+        
+        // File drag and drop
+        const fileDropZone = document.getElementById('fileDropZone');
+        const fileInput = document.getElementById('archiveFile');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileDropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            fileDropZone.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            fileDropZone.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight(e) {
+            fileDropZone.classList.add('dragover');
+        }
+        
+        function unhighlight(e) {
+            fileDropZone.classList.remove('dragover');
+        }
+        
+        fileDropZone.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            fileInput.files = files;
+            updateCombinationsInfo();
+        }
+
+        // Update combinations info when settings change
+        document.getElementById('maxLength').addEventListener('input', updateCombinationsInfo);
+        document.getElementById('charset').addEventListener('change', updateCombinationsInfo);
+
+        function updateCombinationsInfo() {
+            const maxLength = parseInt(document.getElementById('maxLength').value);
+            const charset = document.getElementById('charset').value;
+            
+            // Calculate charset size
+            let charsetSize;
+            switch(charset) {
+                case 'digits': charsetSize = 10; break;
+                case 'lowercase': charsetSize = 26; break;
+                case 'uppercase': charsetSize = 26; break;
+                case 'letters': charsetSize = 52; break;
+                default: charsetSize = 62; // alphanumeric
+            }
+            
+            // Calculate total combinations
+            let total = 0;
+            for (let length = 1; length <= maxLength; length++) {
+                total += Math.pow(charsetSize, length);
+            }
+            
+            // Format number
+            let formattedTotal;
+            if (total > 1000000) {
+                formattedTotal = (total / 1000000).toFixed(1) + ' million';
+            } else if (total > 1000) {
+                formattedTotal = (total / 1000).toFixed(1) + ' thousand';
+            } else {
+                formattedTotal = total;
+            }
+            
+            document.getElementById('combinationsInfo').textContent = 
+                `Estimated combinations: ${formattedTotal} (${charsetSize} chars, length 1-${maxLength})`;
+        }
+
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('http://127.0.0.1:5001/status');
+                const data = await response.json();
+                serverStatus = data;
+                updateToolStatus(data);
+                return true;
+            } catch (error) {
+                document.getElementById('toolStatus').innerHTML = 
+                    '<span class="error">❌ Server not running. Please start the Flask application.</span>';
+                return false;
+            }
+        }
+
+        function updateToolStatus(data) {
+            const statusDiv = document.getElementById('toolStatus');
+            let html = '<div class="tool-status"><strong>Server:</strong> <span class="available">✓ Running</span></div>';
+            
+            if (data.available_tools) {
+                html += '<div class="tool-status"><strong>ZIP support:</strong> <span class="available">✓ Always available</span></div>';
+                
+                const hasRarTools = Object.values(data.available_tools).some(available => available);
+                if (hasRarTools) {
+                    html += '<div class="tool-status"><strong>RAR support:</strong> <span class="available">✓ Available</span></div>';
+                    
+                    for (const [tool, available] of Object.entries(data.available_tools)) {
+                        if (available) {
+                            html += `<div class="tool-status">  • ${tool}: <span class="available">✓</span></div>`;
+                        }
+                    }
+                } else {
+                    html += '<div class="tool-status"><strong>RAR support:</strong> <span class="unavailable">✗ Not available</span></div>';
+                    html += '<div class="tool-status"><small>Install 7z, unrar, or WinRAR for RAR support</small></div>';
+                }
+            }
+            
+            statusDiv.innerHTML = html;
+        }
+
+        function addConsoleLog(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const logLine = document.createElement('div');
+            logLine.className = `console-line ${type}`;
+            logLine.textContent = `[${timestamp}] ${message}`;
+            console.appendChild(logLine);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function updateProgress(attempts, currentLength, found = false, speed = 0, remaining = null) {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const attemptsCount = document.getElementById('attemptsCount');
+            const currentLengthElement = document.getElementById('currentLength');
+            const lengthType = document.getElementById('lengthType');
+            const speedElement = document.getElementById('speed');
+            const remainingTimeElement = document.getElementById('remainingTime');
+            
+            currentAttempts = attempts;
+            const percentage = maxAttempts > 0 ? Math.min((attempts / maxAttempts) * 100, 100) : 0;
+            
+            progressBar.style.width = percentage + '%';
+            progressText.textContent = found ? 'Password Found!' : `Testing passwords... ${attempts.toLocaleString()}/${maxAttempts.toLocaleString()} (${percentage.toFixed(1)}%)`;
+            
+            attemptsCount.textContent = attempts.toLocaleString();
+            currentLengthElement.textContent = currentLength;
+            speedElement.textContent = speed.toLocaleString();
+            
+            // Update remaining time
+            if (remaining !== null && remaining > 0) {
+                const hours = Math.floor(remaining / 3600);
+                const minutes = Math.floor((remaining % 3600) / 60);
+                const seconds = Math.floor(remaining % 60);
+                
+                let timeStr = '';
+                if (hours > 0) timeStr += `${hours}h `;
+                if (minutes > 0 || hours > 0) timeStr += `${minutes}m `;
+                timeStr += `${seconds}s`;
+                
+                remainingTimeElement.textContent = timeStr;
+            } else {
+                remainingTimeElement.textContent = '--';
+            }
+            
+            // Update the digit type description
+            if (currentLength === 1) {
+                lengthType.textContent = 'digit';
+            } else {
+                lengthType.textContent = 'digits';
+            }
+        }
+
+        function showProgressSection() {
+            document.getElementById('progressSection').classList.add('active');
+            document.getElementById('consoleSection').classList.add('active');
+        }
+
+        function hideProgressSection() {
+            document.getElementById('progressSection').classList.remove('active');
+            document.getElementById('consoleSection').classList.remove('active');
+        }
+
+        function resetProgress() {
+            updateProgress(0, 0);
+            document.getElementById('console').innerHTML = '';
+            currentAttempts = 0;
+            startTime = null;
+        }
+
+        // Real-time progress updates using Server-Sent Events
+        let eventSource = null;
+        
+        function startProgressStream() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource('http://127.0.0.1:5001/progress/stream');
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'connected') {
+                    addConsoleLog('Connected to progress stream', 'info');
+                    return;
+                }
+                
+                // Update max attempts if we have total combinations
+                if (data.total_combinations) {
+                    maxAttempts = data.total_combinations;
+                }
+                
+                // Update progress with real data
+                updateProgress(
+                    data.attempts, 
+                    data.current_length, 
+                    data.found,
+                    data.speed || 0,
+                    data.estimated_remaining
+                );
+                
+                // Add console logs based on status
+                if (data.status === 'starting') {
+                    addConsoleLog('Initializing password cracker...', 'info');
+                    addConsoleLog(`Max password length: ${data.max_length}`, 'info');
+                    addConsoleLog(`Character set: ${data.charset}`, 'info');
+                } else if (data.status === 'cracking') {
+                    // Log every 200 attempts to avoid spam
+                    if (data.attempts % 200 === 0 && data.attempts > 0) {
+                        addConsoleLog(`Tried ${data.attempts.toLocaleString()} passwords... Testing ${data.current_length}-digit combinations`, 'info');
+                    }
+                    
+                    // Log when switching to new length
+                    if (data.current_length !== lastLoggedLength) {
+                        const digitText = data.current_length === 1 ? 'digit' : 'digits';
+                        addConsoleLog(`Now testing ${data.current_length}-${digitText} combinations`, 'info');
+                        lastLoggedLength = data.current_length;
+                    }
+                    
+                    // Show current password being tested occasionally
+                    if (data.current_password && data.attempts % 500 === 0) {
+                        addConsoleLog(`Current password: ${data.current_password}`, 'info');
+                    }
+                } else if (data.status === 'completed') {
+                    if (data.found && data.password) {
+                        addConsoleLog(`PASSWORD FOUND: ${data.password}`, 'success');
+                        document.getElementById('result').innerHTML = 
+                            `<span class='success'>✅ Password found: <strong>${data.password}</strong></span>`;
+                    } else {
+                        addConsoleLog('Password not found within search space', 'warning');
+                        document.getElementById('result').innerHTML = 
+                            `<span class='warning'>⚠️ Password not found within the specified search space</span>`;
+                    }
+                    crackingInProgress = false;
+                    document.getElementById('crackBtn').disabled = false;
+                    document.getElementById('crackBtn').textContent = '🚀 Start Cracking';
+                    document.getElementById('stopBtn').style.display = 'none';
+                    eventSource.close();
+                } else if (data.status === 'error') {
+                    addConsoleLog(`Error: ${data.error}`, 'error');
+                    document.getElementById('result').innerHTML = 
+                        `<span class='error'>❌ ${data.error}</span>`;
+                    crackingInProgress = false;
+                    document.getElementById('crackBtn').disabled = false;
+                    document.getElementById('crackBtn').textContent = '🚀 Start Cracking';
+                    document.getElementById('stopBtn').style.display = 'none';
+                    eventSource.close();
+                }
+            };
+            
+            eventSource.onerror = function(event) {
+                addConsoleLog('Connection to progress stream lost', 'error');
+                eventSource.close();
+            };
+        }
+
+        async function crackPassword() {
+            const fileInput = document.getElementById('archiveFile');
+            const resultDiv = document.getElementById('result');
+            const crackBtn = document.getElementById('crackBtn');
+            const maxLength = parseInt(document.getElementById('maxLength').value);
+            const charset = document.getElementById('charset').value;
+            
+            if (!fileInput.files.length) {
+                resultDiv.innerHTML = "<span class='error'>❌ Please select an archive file.</span>";
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const fileName = file.name.toLowerCase();
+            
+            // Check file type and tool availability
+            if (fileName.endsWith('.rar')) {
+                if (!serverStatus || !Object.values(serverStatus.available_tools || {}).some(available => available)) {
+                    resultDiv.innerHTML = "<span class='error'>❌ RAR files require external tools. Please install 7z, unrar, or WinRAR.</span>";
+                    return;
+                }
+            } else if (!fileName.endsWith('.zip')) {
+                resultDiv.innerHTML = "<span class='error'>❌ Please select a ZIP or RAR file.</span>";
+                return;
+            }
+
+            // Validate max length
+            if (maxLength < 1 || maxLength > 8) {
+                resultDiv.innerHTML = "<span class='error'>❌ Max length must be between 1 and 8</span>";
+                return;
+            }
+
+            // Start cracking process
+            crackingInProgress = true;
+            startTime = Date.now();
+            crackBtn.disabled = true;
+            crackBtn.textContent = '🔄 Cracking...';
+            
+            // Show stop button
+            const stopBtn = document.getElementById('stopBtn');
+            stopBtn.style.display = 'inline-block';
+            
+            resetProgress();
+            showProgressSection();
+            
+            addConsoleLog(`Starting password cracking for: ${file.name}`, 'info');
+            addConsoleLog(`File type: ${fileName.endsWith('.zip') ? 'ZIP' : 'RAR'}`, 'info');
+            
+            // Describe charset
+            let charsetDesc;
+            switch(charset) {
+                case 'digits': charsetDesc = 'digits (0-9)'; break;
+                case 'lowercase': charsetDesc = 'lowercase letters (a-z)'; break;
+                case 'uppercase': charsetDesc = 'uppercase letters (A-Z)'; break;
+                case 'letters': charsetDesc = 'letters (a-z, A-Z)'; break;
+                default: charsetDesc = 'alphanumeric (0-9, a-z, A-Z)';
+            }
+            addConsoleLog(`Testing ${maxLength}-character passwords with: ${charsetDesc}`, 'info');
+            
+            resultDiv.innerHTML = "";
+            
+            // Start real-time progress stream
+            startProgressStream();
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('max_length', maxLength);
+            formData.append('charset', charset);
+
+            try {
+                const response = await fetch('http://127.0.0.1:5001/crack', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+
+                if (data.message) {
+                    addConsoleLog(data.message, 'info');
+                } else if (data.error) {
+                    crackingInProgress = false;
+                    addConsoleLog(`Error: ${data.error}`, 'error');
+                    resultDiv.innerHTML = `<span class='error'>❌ ${data.error}</span>`;
+                    crackBtn.disabled = false;
+                    crackBtn.textContent = '🚀 Start Cracking';
+                    stopBtn.style.display = 'none';
+                }
+                
+            } catch (error) {
+                crackingInProgress = false;
+                addConsoleLog(`Network error: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<span class='error'>❌ Network error: ${error.message}</span>`;
+                crackBtn.disabled = false;
+                crackBtn.textContent = '🚀 Start Cracking';
+                stopBtn.style.display = 'none';
+            }
+        }
+
+        // Stop cracking function
+        async function stopCracking() {
+            try {
+                await fetch('http://127.0.0.1:5001/stop', { method: 'POST' });
+                addConsoleLog('Cracking process stopped by user', 'warning');
+                crackingInProgress = false;
+                document.getElementById('crackBtn').disabled = false;
+                document.getElementById('crackBtn').textContent = '🚀 Start Cracking';
+                document.getElementById('stopBtn').style.display = 'none';
+                if (eventSource) {
+                    eventSource.close();
+                }
+            } catch (error) {
+                addConsoleLog('Failed to stop cracking process', 'error');
+            }
+        }
+
+        // Check server status on page load
+        window.onload = async function() {
+            await checkServerStatus();
+            updateCombinationsInfo();
+        }
+    </script>
+</body>
+</html>
